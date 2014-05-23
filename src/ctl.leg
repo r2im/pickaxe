@@ -1,0 +1,80 @@
+%{
+#include "pickaxe.h"
+#include "ctl.h"
+extern CTLExpr *parsed;
+
+static FILE *fp_queries;
+void init_yy()
+{
+	fp_queries = fopen("queries", "r");
+	if (fp_queries == NULL) 
+	{
+		printf("File not found: queries");
+		exit(1);
+	}
+}
+
+#define YY_INPUT(buf, result, max_size)		\
+  {												\
+    int yyc= fgetc(fp_queries); \
+    result= (-1 == yyc) ? 0 : (*(buf)= yyc, 1);	\
+    yyprintf((stderr, "<%c>", yyc));				\
+  }
+#define YYSTYPE CTLExpr*
+%}
+Stmt	= - e:Expr EOL		{ parsed = e; }
+	| ( !EOL . )* EOL		{ printf("CTL parse error\n"); parsed = NULL; }
+
+Expr	= s:Or				{ $$= s; }
+
+
+Or	= l:And
+		( PIPE  r:And	{ l = create_ctl(l, r, ctl_or); }
+		)*				{ $$= l; }
+
+And	= l:Impl
+		( AMP  r:Impl	{ l = create_ctl(l, r, ctl_and);}
+		)*				{ $$= l; }
+Impl = l:Iff
+		( ARROW  r:Iff	{ l = create_ctl(l, r, ctl_imp);}
+		)*				{ $$= l; }
+Iff	= l:Temp
+		( BIARROW  r:Temp	{ l = create_ctl(l, r, ctl_iff);}
+		)*				{ $$= l; }
+
+Temp = n:Not								
+	   | 'EX' - l:Not 						{ $$ = create_ctl(l, NULL, ctl_ex);}	   
+	   | 'EF' - l:Not 						{ $$ = create_ctl(l, NULL, ctl_ef); }	   
+	   | 'EG' - l:Not 						{ $$ = create_ctl(l, NULL, ctl_eg); }	   
+	   | 'E[' - l:Not - 'U' - r:Not - ']' 	{ $$ = create_ctl(l, r, ctl_eu); }
+	   | 'AX' - l:Not 						{ $$ = create_ctl(l, NULL, ctl_ax); }	   
+	   | 'AF' - l:Not 						{ $$ = create_ctl(l, NULL, ctl_af); }	   
+	   | 'AG' - l:Not 						{ $$ = create_ctl(l, NULL, ctl_ag); }	   
+	   | 'A[' - l:Not - 'U' - r:Not - ']' 	{ $$ = create_ctl(l, r, ctl_au); }
+	   
+Not = l:Prop				
+	| EXCL l:Prop			{ $$ = create_ctl(l, NULL, ctl_not);}
+
+Prop = l:Term				
+     | OPEN i:Expr CLOSE	{ $$= i; }
+
+Term = i:ATOMIC				{ $$= i; }
+      | i:PLACEHOLDER		{ $$= i; }
+      | i:CONST				{ $$= i; }
+      
+
+PLACEHOLDER	= < '?'[a-zA-Z0-9_]+ >	-		{ $$ = create_placeholder(yytext); }
+ATOMIC	= < [a-z0-9_]+ >	-		{ $$ = create_atomic(yytext); }
+CONST = <'true'>- | <'false'>-		{ $$ = create_const(yytext); }
+EXCL	= '!'	-
+PIPE	= '|'		-
+AMP		= '&'		-
+ARROW	= '->'		-
+BIARROW	= '<->'		-
+OPEN	= '('		-
+CLOSE	= ')'		-
+-	= [ \t]*
+EOL	= '\n' | '\r\n' | '\r' | ';'
+
+%%
+
