@@ -44,7 +44,7 @@ static BDD check_eu(TransitionSystem *model, BDD l, BDD r) {
 
 static BDD check_ctl(TransitionSystem *model, CTLExpr *ctl)
 {
-	BDD res;
+	BDD res = 0;
 	BDD tmp;
 	BDD tmp2;
 	Labels *l;
@@ -169,11 +169,10 @@ static BDD check_ctl(TransitionSystem *model, CTLExpr *ctl)
 
 void check_query(TransitionSystem *model, CTLRoot *ctl)
 {
-	Labels *l;
+
 	int numphs = ctl->numphs;
 	char *cphs[numphs];
 	current_phs = cphs;
-
 	int ph_indexes[numphs];
 	for (int i = 0; i < numphs; i++) ph_indexes[i] = 0; //set all indexes to 0
 
@@ -183,42 +182,31 @@ void check_query(TransitionSystem *model, CTLRoot *ctl)
 	{
 		if (NULL == ctl->ph_vals[i])
 		{
-			printf("new ph_vals");
-			ctl->ph_vals = new_array();
+			ctl->ph_vals[i] = new_array();
 			for (int j = 0; j < model->activities_size; j++)
 			{
-				add_element(ctl->ph_vals, model->labels[j]->activity);
+				add_element(ctl->ph_vals[i], model->labels[j]->activity);
 			}
 		}
-		printf("here instead");
 		numloops *= ctl->ph_vals[i]->length;
 	}
+
 
 	for (int i = 0; i < numloops; i++)
 	{
 
 		//make assignments
-		for (int n = 0; n < numphs; n++) {
+		for (int n = 0; n < numphs; n++)
+		{
 			int li = ph_indexes[n];
 			VarArray *a = ctl->ph_vals[n];
 			current_phs[n] = a->elements[li];
 			//increment index
-
 			li = (li + 1) % ctl->ph_vals[n]->length;
 			ph_indexes[n] = li;
-//			if (i == 0)
-//			{
-//				l = model->labels[0];
-//				current_phs[n] = l->activity;
-//				continue;
-//			}
-//			int li = (ph_indexes[n] + 1) % model->activities_size;
-//			ph_indexes[n] = li;
-//			l = model->labels[li];
-//			current_phs[n] = l->activity;
-//
-//			//when index makes a full round, increment next. otherwise no need to increment other(s)
-			if (li != 0) {
+
+			//when index makes a full round, increment next. otherwise no need to increment other(s)
+			if (li != 0 && i != 0) {
 				break;
 			}
 		}
@@ -232,6 +220,7 @@ void check_query(TransitionSystem *model, CTLRoot *ctl)
 		BDD res = check_ctl(model, ctl->expr);
 		double s = support(model, res);
 		bdd_delref(res);
+		//TODO: make the funtion to return the result instead printing it to stdout
 		printf("%.2f\t", s);
 		to_string(ctl->expr, stdout, 1);
 		printf("\n");
@@ -276,21 +265,19 @@ static void end_element(void *user_data, const char *name)
   if (strcmp("trace", name) == 0)
   {
 	  trace[event_i] = NULL;
-//	  printf("adding trace %d\n", event_i);
 	  add_trace(model, trace);
-//	  printf("added\n");
   }
   else if (strcmp("event", name) == 0)
   {
 
 	  strcpy(event, last_event);
-//	  if (last_lc != NULL)
-//	  {
-//		  printf("here 2\n");
-//		  strcat(event, "_");
-//		  strcat(event, last_lc);
-//		  free(last_lc);
-//	  }
+	  if (last_lc != NULL)
+	  {
+		  strcat(event, "#");
+		  strcat(event, last_lc);
+		  free(last_lc);
+		  last_lc = NULL;
+	  }
 	  free(last_event);
 	  trace[event_i] = strdup(event);
 	  event_i++;
@@ -326,9 +313,10 @@ static void parse_log(const char *log_file)
 
 #include <time.h>
 #include <sys/time.h>
-#define _DEBUG 1
+//#define _DEBUG 1
 int main(int argc, char **args)
 {
+
 	struct timeval start, end;
 	long delta = 0;
 	model = create_emtpty_model();
@@ -337,7 +325,7 @@ int main(int argc, char **args)
 	if (argc < 2)
 	{
 		printf("No log file name given, using ./log.xes\n");
-		log_file = "D:\\test_logs\\var_max_trace_size\\a_test_traces_100_alphabet_10_maxeventstraces_5.xes";
+		log_file = "log.xes";
 	}
 	else
 	{
@@ -347,7 +335,7 @@ int main(int argc, char **args)
 #else
 
 	char *trace1[] = {"A", "A", NULL};
-	char *trace2[] = {"D", "A", "B", "A", "D", NULL};
+	char *trace2[] = {"D", "A", "B", "A", "e", NULL};
 	char *trace3[] = {"A", "B", "B", "D", NULL};
 	char *trace4[] = {"G", "F", NULL};
 	char *trace5[] = {"A", "A", NULL};
@@ -358,30 +346,56 @@ int main(int argc, char **args)
 	add_trace(model, trace4);
 	add_trace(model, trace5);
 
+
+
 	create_bdds(model);
 	parsed = create_ctl(create_placeholder("?x"), NULL, ctl_ef);
 	CTLRoot *ctl = create_root(parsed);
 	init_placeholders(ctl, parsed);
-
 	VarArray *x_vals = new_array();
 	add_element(x_vals, "A");
 	add_element(x_vals, "B");
+
 //	ctl->ph_vals[0] = x_vals;
 
-	check_query(model, ctl);
+//	check_query(model, ctl);
+	printf("%d", model->states_size);
 //	print_model(model);
 
 	return 0;
 #endif
-//	time(&end);
-//	printf("time to read in the log: %d seconds\n", (end - start));
-
 	create_bdds(model);
-//	printf("initial nodes: %d\n", bdd_getnodenum());
 
 
-//	printf("%d states in the transition system.\n", model->states_size);
-//	print_model(model);
+/***************FILTER*********************/
+	VarArray *x_vals0 = new_array();
+	add_element(x_vals0, "A_SUBMITTED#complete");
+	add_element(x_vals0, "W_Completeren aanvraag#schedule");
+	add_element(x_vals0, "A_DECLINED#complete");
+	add_element(x_vals0, "O_DECLINED#complete");
+	add_element(x_vals0, "A_FINALIZED#complete");
+	add_element(x_vals0, "O_SENT#complete");
+	add_element(x_vals0, "O_DECLINED#complete");
+
+	VarArray *x_vals1 = new_array();
+	add_element(x_vals1, "A_SUBMITTED#complete");
+	add_element(x_vals1, "W_Completeren aanvraag#schedule");
+	add_element(x_vals1, "A_DECLINED#complete");
+	add_element(x_vals1, "O_DECLINED#complete");
+	add_element(x_vals1, "A_FINALIZED#complete");
+	add_element(x_vals1, "O_SENT#complete");
+	add_element(x_vals1, "O_DECLINED#complete");
+
+	VarArray *x_vals2 = new_array();
+	add_element(x_vals2, "A_SUBMITTED#complete");
+	add_element(x_vals2, "W_Completeren aanvraag#schedule");
+	add_element(x_vals2, "A_DECLINED#complete");
+	add_element(x_vals2, "O_DECLINED#complete");
+	add_element(x_vals2, "A_FINALIZED#complete");
+	add_element(x_vals2, "O_SENT#complete");
+	add_element(x_vals2, "O_DECLINED#complete");
+
+/***************FILTER*********************/
 	init_yy();
 	int i = 1;
 	while(i != 0)
@@ -390,8 +404,10 @@ int main(int argc, char **args)
 		if (i == 0 || parsed == NULL)
 			break;
 
-//		to_string(parsed, stdout, 0);
 		CTLRoot *ctl = create_root(parsed);
+//		ctl->ph_vals[0] = x_vals0;
+//		ctl->ph_vals[1] = x_vals1;
+//		ctl->ph_vals[2] = x_vals2;
 		init_placeholders(ctl, parsed);
 		gettimeofday(&start, NULL);
 		check_query(model, ctl);
@@ -401,50 +417,8 @@ int main(int argc, char **args)
 //		to_string(parsed, stdout, 0);
 //		printf("\t%ld\n", delta);
 	}
-#ifndef _DEBUG
-	printf("%s\t%ld\n", log_file, delta);
-#endif
 
-//	model = create_emtpty_model();
-//	char *trace1[] = {"A", "B", "C", "D", NULL};
-//	char *trace2[] = {"A", "A", "B", "A", "D", NULL};
-//	char *trace3[] = {"A", "B", "C", "D", NULL};
-//
-//	add_trace(model, trace1);
-//	add_trace(model, trace2);
-//	add_trace(model, trace3);
-//
-//	create_bdds(model);
-//	print_model(model);
-//
-//	CTLExpr* ctl = parsed; //create_placeholder("?x");
-//	init_placeholders(ctl, ctl);
-//	check_query(model, ctl);
-
-
-//TESTING
-//	Labels *l = get_labels_for(model, "B");
-
-//	BDD res = check_ctl(model, &chain_succ);
-//	double s = support(model, res);
-//	printf("%.2f", s);
-//	bdd_printtable(res);
-//
-////	print_model(model);
-////
-//	BDD expected = bdd_or(model->states_bdds[0], model->states_bdds[1]);
-//	expected = bdd_or(expected, model->states_bdds[2]);
-//	expected = bdd_or(expected, model->states_bdds[3]);
-//	expected = bdd_or(expected, model->states_bdds[4]);
-//	expected = bdd_or(expected, model->states_bdds[5]);
-//	expected = bdd_or(expected, model->states_bdds[6]);
-//	expected = bdd_or(expected, model->states_bdds[7]);
-////	expected = bdd_or(expected, model->states_bdds[8]);
-//
-//	if (res == expected)
-//		printf("allright");
-//	else
-//		printf("oi");
-//	char ch = getchar();
+	printf("%s\t%ld\t%d\n", log_file, delta, model->states_size);
+	//TODO: would be pollite to clean up the memory, but what the heck, OS will do it for us
 	return 0;
 }

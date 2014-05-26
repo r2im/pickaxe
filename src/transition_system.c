@@ -155,8 +155,6 @@ static void get_transitions(TransitionSystem *model, State *src, State *dest)
 	if (NULL != src && src->id != 0) //dont make transitions from the pseudo initial state
 	{
 
-
-//		fprintf(stdout, "trans: %d -> %d\n", src->id, dest->id);
 		Transition *t = malloc(sizeof(Transition));
 		if(!t)
 		{
@@ -188,6 +186,7 @@ static void get_transitions(TransitionSystem *model, State *src, State *dest)
 	}
 }
 
+//this function is not used, because of the side effect when calculating support
 static void merge_similar_children(State *state)
 {
 	if (state == NULL || state == &PSEUDO_END)
@@ -247,10 +246,10 @@ static void merge_similar_children(State *state)
 		}
 	}
 
-//	for (int i = 0; i < state->children_size; i++)
-//	{
-//		merge_similar_children(state->children[i]);
-//	}
+	for (int i = 0; i < state->children_size; i++)
+	{
+		merge_similar_children(state->children[i]);
+	}
 }
 
 static void merge_similar_parents(State *state)
@@ -398,7 +397,6 @@ static int assign_id_and_collect_labels(TransitionSystem *model, State *state)
 		{
 			Labels *l = get_labels_for(model, state->activity);
 			add_state_to(state, l);
-
 		}
 	}
 
@@ -523,12 +521,9 @@ TransitionSystem* create_emtpty_model(void)
 
 void create_bdds(TransitionSystem *model)
 {
-//	printf("%d\ttotal states before merge\n", initial_numstates);
 	merge_similar_parents(&PSEUDO_END);
 //	merge_similar_children(model->pseudo_initial); //merging children spoiles the calculation of support
 	model->states_size = assign_id_and_collect_labels(model, model->pseudo_initial);
-//	printf("%d\ttotal states after merge\n", model->states_size);
-//	printf("%d\tstates removed\n", initial_numstates - model->states_size);
 
 	get_transitions(model, NULL, model->pseudo_initial);
 
@@ -585,15 +580,10 @@ void create_bdds(TransitionSystem *model)
 	BDD transitions_bdd = bdd_addref(0);
 	for (int i = 0; i < model->transition_size; i++)
 	{
-//		printf("(%d, %d), ", model->transitions[i]->src, model->transitions[i]->dest);
 		BDD tt = bdd_addref(bdd_and(model->states_bdds[model->transitions[i]->src], model->states_primed_bdds[model->transitions[i]->dest]));
 		transitions_bdd = f_bdd_or_with(transitions_bdd, tt);
 		bdd_delref(tt);
 	}
-	//transition from end to end to complete Kripke structure
-//	BDD tt = bdd_addref(bdd_and(model->states_bdds[PSEUDO_END.id], model->states_primed_bdds[PSEUDO_END.id]));
-//	transitions_bdd = f_bdd_or_with(transitions_bdd, tt);
-//	bdd_delref(tt);
 
 	model->transitions_bdd = transitions_bdd;
 
@@ -605,6 +595,5 @@ void create_bdds(TransitionSystem *model)
 		{
 			l->states_bdd = f_bdd_or_with(l->states_bdd, model->states_bdds[l->states[j]]);
 		}
-
 	}
 }

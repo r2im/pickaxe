@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "pickaxe.h"
 #include "ctl.h"
 
 void to_string(CTLExpr *ctl, FILE *fp, int resolve_ph)
@@ -42,22 +43,22 @@ void to_string(CTLExpr *ctl, FILE *fp, int resolve_ph)
 //		fprintf(fp, ")");
 		break;
 	case ctl_ex:
-		fprintf(fp, "EX(");
+		fprintf(fp, "X(");
 		to_string(ctl->expr1, fp, resolve_ph);
 		fprintf(fp, ")");
 		break;
 	case ctl_ef:
-		fprintf(fp, "EF(");
+		fprintf(fp, "F(");
 		to_string(ctl->expr1, fp, resolve_ph);
 		fprintf(fp, ")");
 		break;
 	case ctl_eg:
-		fprintf(fp, "EG(");
+		fprintf(fp, "G(");
 		to_string(ctl->expr1, fp, resolve_ph);
 		fprintf(fp, ")");
 		break;
 	case ctl_eu:
-		fprintf(fp, "E[");
+		fprintf(fp, "[");
 		to_string(ctl->expr1, fp, resolve_ph);
 		fprintf(fp, " U ");
 		to_string(ctl->expr2, fp, resolve_ph);
@@ -146,7 +147,13 @@ CTLRoot *create_root(CTLExpr* expr)
 	root->expr = expr;
 	root->numphs = 0;
 	root->phs = NULL;
-	root->ph_vals = malloc(sizeof(VarArray *) * 5); //TODO: remove magic number
+	root->ph_vals = malloc(5 * sizeof(VarArray *)); //TODO: remove magic number
+	if (NULL == root->ph_vals)
+	{
+		fprintf(stderr, "ctl.c in create_root: malloc failed\n");
+		exit(-1);
+	}
+	for (int i = 0; i < 5; i++) root->ph_vals[i] = NULL;
 
 	return root;
 }

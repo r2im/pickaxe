@@ -10,7 +10,7 @@
 
 struct var_array
 {
-	int length;
+	size_t length;
 	void **elements;
 };
 

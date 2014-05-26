@@ -25,7 +25,6 @@
 #define ctl_atomic  15
 #define ctl_ph      16
 
-#include "pickaxe.h" //some how the build system of eclipse needs this...
 struct ctl_expr
 {
 	char *name;
