@@ -13,35 +13,57 @@ extern int yyparse(void);
 extern void init_yy(void);
 CTLExpr *parsed;
 
-extern State PSEUDO_END;
 static char *my_true = "true";
 
 char **current_phs;
 
 static BDD check_eu(TransitionSystem *model, BDD l, BDD r) {
 
-	BDD result = bdd_addref(r);
-	BDD x = bdd_addref(0);
-	BDD pres;
-	BDD tmp;
-	BDD tmp2;
-	do {
-		bdd_delref(x);
-		x = bdd_addref(result);
-		pres = bdd_addref(pre_exists(model, result));
-		tmp = bdd_addref(result);
-		tmp2 = bdd_addref(bdd_and(l, pres));
-		bdd_delref(result);
-		result = bdd_addref(bdd_or(tmp, tmp2));
+	BDD res = bdd_addref(r);
+	BDD tmp = bdd_addref(pre_exists(model, res)); //get predecessors
+	BDD tmp2 = bdd_addref(bdd_and(l, tmp)); //filter out states that are not included in l
+	BDD tmp3 = bdd_addref(bdd_or(res, tmp2)); //append result
+	while (res != tmp3)
+	{
+		bdd_delref(res);
+		res = bdd_addref(tmp3);
 		bdd_delref(tmp);
 		bdd_delref(tmp2);
-		bdd_delref(pres);
-	} while (result != x);
+		bdd_delref(tmp3);
+		tmp = bdd_addref(pre_exists(model, res)); //get predecessors
+		tmp2 = bdd_addref(bdd_and(l, tmp)); //filter out states that are not included in l
+		tmp3 = bdd_addref(bdd_or(res, tmp2)); //append result
+	}
+	bdd_delref(tmp);
+	bdd_delref(tmp2);
+	bdd_delref(tmp3);
 
-	bdd_delref(x);
-	return result;
+	return res;
 }
 
+static BDD check_au(TransitionSystem *model, BDD l, BDD r) {
+
+	BDD res = bdd_addref(r);
+	BDD tmp = bdd_addref(pre_all(model, res)); //get predecessors
+	BDD tmp2 = bdd_addref(bdd_and(l, tmp)); //filter out states that are not included in l
+	BDD tmp3 = bdd_addref(bdd_or(res, tmp2)); //append result
+	while (res != tmp3)
+	{
+		bdd_delref(res);
+		res = bdd_addref(tmp3);
+		bdd_delref(tmp);
+		bdd_delref(tmp2);
+		bdd_delref(tmp3);
+		tmp = bdd_addref(pre_all(model, res)); //get predecessors
+		tmp2 = bdd_addref(bdd_and(l, tmp)); //filter out states that are not included in l
+		tmp3 = bdd_addref(bdd_or(res, tmp2)); //append result
+	}
+	bdd_delref(tmp);
+	bdd_delref(tmp2);
+	bdd_delref(tmp3);
+
+	return res;
+}
 static BDD check_ctl(TransitionSystem *model, CTLExpr *ctl)
 {
 	BDD res = 0;
@@ -94,18 +116,26 @@ static BDD check_ctl(TransitionSystem *model, CTLExpr *ctl)
 		bdd_delref(tmp);
 		break;
 	case ctl_ef:
-		// E[true U p]
-		tmp = bdd_addref(model->all_states);
-		tmp2 = check_ctl(model, ctl->expr1);
-		res = check_eu(model, tmp, tmp2);
+		//check inner expression
+		res = check_ctl(model, ctl->expr1);
+		//get predecessors
+		tmp = bdd_addref(pre_exists(model, res));
+		tmp2 = bdd_addref(bdd_or(res, tmp));
+		while (res != tmp2) //while there is no predecessors
+		{
+			bdd_delref(res);
+			res = bdd_addref(tmp2);
+			bdd_delref(tmp);
+			bdd_delref(tmp2);
+			tmp = bdd_addref(pre_exists(model, res));
+			tmp2 = bdd_addref(bdd_or(res, tmp));
+		}
 		bdd_delref(tmp);
 		bdd_delref(tmp2);
+
 		break;
 	case ctl_eg:
 		res = check_ctl(model, ctl->expr1);
-		//add pseudo end, to make EG work
-		//res = bdd_addref(bdd_or(tmp, model->states_bdds[PSEUDO_END.id]));
-//		bdd_delref(tmp);
 		tmp = bdd_addref(model->all_states);
 		while (res != tmp) {
 			bdd_delref(tmp);
@@ -125,16 +155,47 @@ static BDD check_ctl(TransitionSystem *model, CTLExpr *ctl)
 		bdd_delref(tmp2);
 		break;
 	case ctl_ax:
-		printf("AX not implemented\n");
+		tmp = check_ctl(model, ctl->expr1);
+		res = bdd_addref(pre_exists(model, tmp));
+		bdd_delref(tmp);
 		break;
 	case ctl_af:
-		printf("AF not implemented\n");
+		//check inner expression
+		res = check_ctl(model, ctl->expr1);
+		//get predecessors
+		tmp = bdd_addref(pre_all(model, res));
+		tmp2 = bdd_addref(bdd_or(res, tmp));
+		while (res != tmp2) //while there is no predecessors
+		{
+			bdd_delref(res);
+			res = bdd_addref(tmp2);
+			bdd_delref(tmp);
+			bdd_delref(tmp2);
+			tmp = bdd_addref(pre_all(model, res));
+			tmp2 = bdd_addref(bdd_or(res, tmp));
+		}
+		bdd_delref(tmp);
+		bdd_delref(tmp2);
 		break;
 	case ctl_ag:
-		printf("AG not implemented\n");
+		res = check_ctl(model, ctl->expr1);
+		tmp = bdd_addref(model->all_states);
+		while (res != tmp) {
+			bdd_delref(tmp);
+			tmp = bdd_addref(res);
+			bdd_delref(res);
+			tmp2 = bdd_addref(pre_all(model, tmp));
+			res = bdd_addref(bdd_and(tmp, tmp2));
+			bdd_delref(tmp2);
+		}
+		bdd_delref(tmp);
 		break;
 	case ctl_au:
-		printf("AU not implemented\n");
+		tmp = check_ctl(model, ctl->expr1);
+		tmp2 = check_ctl(model, ctl->expr2);
+		res = check_au(model, tmp, tmp2);
+		bdd_delref(tmp);
+		bdd_delref(tmp2);
 		break;
 	case ctl_const:
 		if (strcmp(ctl->name, my_true) == 0)
@@ -171,6 +232,18 @@ void check_query(TransitionSystem *model, CTLRoot *ctl)
 {
 
 	int numphs = ctl->numphs;
+	if (numphs == 0)
+	{
+		//TODO: remove duplicate code
+		BDD res = check_ctl(model, ctl->expr);
+		double s = support(model, res);
+		bdd_delref(res);
+		printf("%.2f\t", s);
+		to_string(ctl->expr, stdout, 1);
+		printf("\n");
+		return;
+	}
+
 	char *cphs[numphs];
 	current_phs = cphs;
 	int ph_indexes[numphs];
@@ -201,6 +274,7 @@ void check_query(TransitionSystem *model, CTLRoot *ctl)
 			int li = ph_indexes[n];
 			VarArray *a = ctl->ph_vals[n];
 			current_phs[n] = a->elements[li];
+//			printf("current_phs[%d] = %s\n", n, a->elements[li]);
 			//increment index
 			li = (li + 1) % ctl->ph_vals[n]->length;
 			ph_indexes[n] = li;
@@ -220,7 +294,6 @@ void check_query(TransitionSystem *model, CTLRoot *ctl)
 		BDD res = check_ctl(model, ctl->expr);
 		double s = support(model, res);
 		bdd_delref(res);
-		//TODO: make the funtion to return the result instead printing it to stdout
 		printf("%.2f\t", s);
 		to_string(ctl->expr, stdout, 1);
 		printf("\n");
@@ -265,7 +338,9 @@ static void end_element(void *user_data, const char *name)
   if (strcmp("trace", name) == 0)
   {
 	  trace[event_i] = NULL;
+//	  printf("adding trace %d\n", event_i);
 	  add_trace(model, trace);
+//	  printf("added\n");
   }
   else if (strcmp("event", name) == 0)
   {
@@ -313,6 +388,7 @@ static void parse_log(const char *log_file)
 
 #include <time.h>
 #include <sys/time.h>
+
 //#define _DEBUG 1
 int main(int argc, char **args)
 {
@@ -325,7 +401,7 @@ int main(int argc, char **args)
 	if (argc < 2)
 	{
 		printf("No log file name given, using ./log.xes\n");
-		log_file = "log.xes";
+		log_file = "D:\\test_logs\\var_max_trace_size\\a_test_traces_100_alphabet_10_maxeventstraces_5.xes";
 	}
 	else
 	{
@@ -335,38 +411,45 @@ int main(int argc, char **args)
 #else
 
 	char *trace1[] = {"A", "A", NULL};
-	char *trace2[] = {"D", "A", "B", "A", "e", NULL};
+	char *trace2[] = {"D", "A", "B", "A", NULL};
 	char *trace3[] = {"A", "B", "B", "D", NULL};
 	char *trace4[] = {"G", "F", NULL};
-	char *trace5[] = {"A", "A", NULL};
+	char *trace5[] = {"A", "A", "B", NULL};
 
 	add_trace(model, trace1);
 	add_trace(model, trace2);
-	add_trace(model, trace3);
-	add_trace(model, trace4);
-	add_trace(model, trace5);
+//	add_trace(model, trace3);
+//	add_trace(model, trace4);
+//	add_trace(model, trace5);
 
 
 
 	create_bdds(model);
-	parsed = create_ctl(create_placeholder("?x"), NULL, ctl_ef);
-	CTLRoot *ctl = create_root(parsed);
-	init_placeholders(ctl, parsed);
-	VarArray *x_vals = new_array();
-	add_element(x_vals, "A");
-	add_element(x_vals, "B");
+	BDD pres = bdd_apply(model->all_states, model->states_bdds[2]));
+//	BDD expected = bdd_or(model->states_bdds[1], model->states_bdds[4]);
+//	printf("%d", pres);
+//	print_model(model);
+//	parsed = create_ctl(create_atomic("B"), NULL, ctl_not);
+//	CTLRoot *d_ctl = create_root(parsed);
+//	init_placeholders(d_ctl, parsed);
+//	VarArray *x_vals = new_array();
+//	add_element(x_vals, "A");
+//	add_element(x_vals, "B");
 
 //	ctl->ph_vals[0] = x_vals;
 
-//	check_query(model, ctl);
-	printf("%d", model->states_size);
+//	check_query(model, d_ctl);
+//	bdd_gbc();
+//	printf("%d", model->states_size);
 //	print_model(model);
 
 	return 0;
 #endif
 	create_bdds(model);
+//	printf("initial nodes: %d\n", bdd_getnodenum());
 
-
+//	printf("%d states in the transition system.\n", model->states_size);
+//	print_model(model);
 /***************FILTER*********************/
 	VarArray *x_vals0 = new_array();
 	add_element(x_vals0, "A_SUBMITTED#complete");
@@ -396,14 +479,18 @@ int main(int argc, char **args)
 	add_element(x_vals2, "O_DECLINED#complete");
 
 /***************FILTER*********************/
-	init_yy();
-	int i = 1;
-	while(i != 0)
-	{
-		i = yyparse();
-		if (i == 0 || parsed == NULL)
-			break;
+//	init_yy();
+//	int i = 1;
+//	while(i != 0)
+//	{
+//		i = yyparse();
+//		if (i == 0 || parsed == NULL)
+//			break;
 
+//		to_string(parsed, stdout, 0);
+parsed = create_ctl(create_ctl(create_placeholder("?x"), create_ctl(create_atomic("A_ACTIVATED#complete"), NULL, ctl_ef), ctl_imp), NULL, ctl_eg);
+//to_string(parsed, stdout, 0);
+//return 0;
 		CTLRoot *ctl = create_root(parsed);
 //		ctl->ph_vals[0] = x_vals0;
 //		ctl->ph_vals[1] = x_vals1;
@@ -416,9 +503,51 @@ int main(int argc, char **args)
 //		printf("%s\t", log_file);
 //		to_string(parsed, stdout, 0);
 //		printf("\t%ld\n", delta);
-	}
-
+//	}
+#ifndef _DEBUG
 	printf("%s\t%ld\t%d\n", log_file, delta, model->states_size);
-	//TODO: would be pollite to clean up the memory, but what the heck, OS will do it for us
+#endif
+
+//	model = create_emtpty_model();
+//	char *trace1[] = {"A", "B", "C", "D", NULL};
+//	char *trace2[] = {"A", "A", "B", "A", "D", NULL};
+//	char *trace3[] = {"A", "B", "C", "D", NULL};
+//
+//	add_trace(model, trace1);
+//	add_trace(model, trace2);
+//	add_trace(model, trace3);
+//
+//	create_bdds(model);
+//	print_model(model);
+//
+//	CTLExpr* ctl = parsed; //create_placeholder("?x");
+//	init_placeholders(ctl, ctl);
+//	check_query(model, ctl);
+
+
+//TESTING
+//	Labels *l = get_labels_for(model, "B");
+
+//	BDD res = check_ctl(model, &chain_succ);
+//	double s = support(model, res);
+//	printf("%.2f", s);
+//	bdd_printtable(res);
+//
+////	print_model(model);
+////
+//	BDD expected = bdd_or(model->states_bdds[0], model->states_bdds[1]);
+//	expected = bdd_or(expected, model->states_bdds[2]);
+//	expected = bdd_or(expected, model->states_bdds[3]);
+//	expected = bdd_or(expected, model->states_bdds[4]);
+//	expected = bdd_or(expected, model->states_bdds[5]);
+//	expected = bdd_or(expected, model->states_bdds[6]);
+//	expected = bdd_or(expected, model->states_bdds[7]);
+////	expected = bdd_or(expected, model->states_bdds[8]);
+//
+//	if (res == expected)
+//		printf("allright");
+//	else
+//		printf("oi");
+//	char ch = getchar();
 	return 0;
 }

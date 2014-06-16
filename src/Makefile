@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -std=c99 -I../includes
+CFLAGS=-Wall -std=c99 -I../includes -O2
 OFLAGS=-L/workspace_c/tlqc/lib -lbuddy -llibexpat-1 
 all: pickaxe
 
@@ -30,4 +30,4 @@ ctl.leg.c: leg
 leg:
 	
 clean:
-	del *o tlqc.exe
+	del *o pickaxe.exe

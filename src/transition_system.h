@@ -40,6 +40,7 @@ struct transition_system
 	BDD *states_bdds;
 	BDD *states_primed_bdds;
 	BDD all_states;
+	BDD initial_states;
 
 	Transition **transitions;
 	int transition_size;
@@ -61,8 +62,10 @@ TransitionSystem* create_emtpty_model(void);
 void add_trace(TransitionSystem *model, char **activities);
 void print_model(TransitionSystem *model);
 void create_bdds(TransitionSystem *model);
-//BDD to_primed(TransitionSystem *model, BDD p);
+BDD f_bdd_and_with(BDD l, BDD r);
+BDD f_bdd_or_with(BDD l, BDD r);
 BDD pre_exists(TransitionSystem *model, BDD p);
+BDD pre_all(TransitionSystem *model, BDD p);
 double support(TransitionSystem *model, BDD result);
 Labels* get_labels_for(TransitionSystem *model, char *activity);
 
