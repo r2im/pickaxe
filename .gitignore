@@ -2,8 +2,8 @@
 .project
 .settings
 *.txt
-*.log
-*.xes
+/src/*.log
+/src/*.xes
 *.lib
 *.dll
 *.bat
