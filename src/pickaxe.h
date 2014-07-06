@@ -11,13 +11,13 @@
 struct var_array
 {
 	size_t length;
-	void **elements;
+	char **elements;
 };
 
 typedef struct var_array VarArray;
 
 VarArray *new_array();
-void add_element(VarArray *a, void *element);
+void add_element(VarArray *a, char *element);
 void del_array(VarArray *a);
 
 #endif /* PICKAXE_H_ */

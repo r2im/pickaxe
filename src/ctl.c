@@ -5,7 +5,7 @@
 #include "pickaxe.h"
 #include "ctl.h"
 
-void to_string(CTLExpr *ctl, FILE *fp, int resolve_ph)
+void ctl_to_string(CTLExpr *ctl, FILE *fp, int resolve_ph)
 {
 	switch(ctl->op)
 	{
@@ -102,7 +102,7 @@ void to_string(CTLExpr *ctl, FILE *fp, int resolve_ph)
 	}
 }
 
-CTLExpr *create_atomic(char *atomic)
+CTLExpr *ctl_create_atomic(char *atomic)
 {
 	CTLExpr *ctl = malloc(sizeof(CTLExpr));
 	ctl->name = strdup(atomic);
@@ -111,7 +111,7 @@ CTLExpr *create_atomic(char *atomic)
 	return ctl;
 }
 
-CTLExpr *create_const(char *c)
+CTLExpr *ctl_create_const(char *c)
 {
 	CTLExpr *ctl = malloc(sizeof(CTLExpr));
 	ctl->name = strdup(c);
@@ -120,7 +120,7 @@ CTLExpr *create_const(char *c)
 	return ctl;
 }
 
-CTLExpr *create_placeholder(char *ph)
+CTLExpr *ctl_create_placeholder(char *ph)
 {
 	CTLExpr *ctl = malloc(sizeof(CTLExpr));
 	ctl->name = strdup(ph);
@@ -131,7 +131,7 @@ CTLExpr *create_placeholder(char *ph)
 	return ctl;
 }
 
-CTLExpr *create_ctl(CTLExpr* expr1, CTLExpr* expr2, int op)
+CTLExpr *ctl_create_ctl(CTLExpr* expr1, CTLExpr* expr2, int op)
 {
 	CTLExpr *ctl = malloc(sizeof(CTLExpr));
 	ctl->expr1 = expr1;
@@ -141,7 +141,7 @@ CTLExpr *create_ctl(CTLExpr* expr1, CTLExpr* expr2, int op)
 	return ctl;
 }
 
-CTLRoot *create_root(CTLExpr* expr)
+CTLRoot *ctl_create_root(CTLExpr* expr)
 {
 	CTLRoot *root = malloc(sizeof(CTLRoot));
 	root->expr = expr;
@@ -158,7 +158,7 @@ CTLRoot *create_root(CTLExpr* expr)
 	return root;
 }
 
-void init_placeholders(CTLRoot* root, CTLExpr* ctl)
+void ctl_init_placeholders(CTLRoot* root, CTLExpr* ctl)
 {
 
 	if (ctl->op == ctl_atomic || ctl->op == ctl_const)

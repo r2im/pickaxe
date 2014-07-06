@@ -3,10 +3,10 @@
 
 #include "pickaxe.h"
 
-void add_element(VarArray *a, void *element)
+void add_element(VarArray *a, char *element)
 {
 	a->length++;
-	a->elements = realloc(a->elements, (a->length) * sizeof(void *));
+	a->elements = realloc(a->elements, (a->length) * sizeof(char*));
 	if (NULL == a->elements)
 	{
 		fprintf(stderr, "core: add_elememnt realloc failed\n");
@@ -31,9 +31,5 @@ VarArray *new_array()
 
 void del_array(VarArray *a)
 {
-	for (int i = 0; i < a->length; i++)
-	{
-		free(a->elements[i]);
-	}
 	free(a);
 }

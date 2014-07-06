@@ -50,11 +50,11 @@ struct ctl_root
 
 typedef struct ctl_root CTLRoot;
 
-void to_string(CTLExpr *ctl, FILE *fp, int resolve_ph);
-CTLExpr *create_atomic(char *atomic);
-CTLExpr *create_const(char *c);
-CTLExpr *create_placeholder(char *ph);
-CTLExpr *create_ctl(CTLExpr *expr1, CTLExpr *expr2, int op);
-CTLRoot *create_root(CTLExpr *expr);
-void init_placeholders(CTLRoot *root, CTLExpr *ctl);
+void ctl_to_string(CTLExpr *ctl, FILE *fp, int resolve_ph);
+CTLExpr *ctl_create_atomic(char *atomic);
+CTLExpr *ctl_create_const(char *c);
+CTLExpr *ctl_create_placeholder(char *ph);
+CTLExpr *ctl_create_ctl(CTLExpr *expr1, CTLExpr *expr2, int op);
+CTLRoot *ctl_create_root(CTLExpr *expr);
+void ctl_init_placeholders(CTLRoot *root, CTLExpr *ctl);
 #endif /* CTL_H_ */
