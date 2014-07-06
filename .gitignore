@@ -1,0 +1,14 @@
+.cproject
+.project
+.settings
+*.txt
+/src/*.log
+/src/*.xes
+*.lib
+*.dll
+*.bat
+*.o
+*.exe
+/bin
+/Debug
+/lib

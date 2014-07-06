@@ -1,3 +1,7 @@
+EG(?x -> EF(A_ACTIVATED#complete))
+//
+!(EF?x & EF?y)
+//
 (EG(?x -> EX(E[!(?x) U ?y]))) & (((E[!(?y) U ?x]) | !(EG?y)) & (EG(?y -> EX((E[!(?y) U ?x]) | !(EG?y)))))
 !?x
 EG?x
